@@ -1,55 +1,98 @@
+using System;
 using System.Collections.Generic;
 using Doozy.Runtime.Reactor.Animators;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 public class GeneralizedAnimation : EditorWindow
 {
     public float animationTime;
 
     public List<UIAnimator> animations;
-    public List<Rect> rects;
-    private Vector2 scrollPosition = Vector2.zero;
+    public List<ResizableRects> rects;
+    private Vector2 animationListScrollPosition = Vector2.zero;
+    private Vector2 rectsScrollPosition = Vector2.zero;
 
     // variables para el foldout
     private bool isListFoldoutOpen;
     private bool isRectsFoldoutOpen;
 
+    private void OnEnable()
+    {
+        animations = new List<UIAnimator>();
+        rects = new List<ResizableRects>();
+    }
+
     private void OnGUI()
     {
         animationTime = EditorGUILayout.FloatField("Animation Time", animationTime);
 
-        Vector2 lastItemPosition;
-        CreateAnimationsList(out lastItemPosition);
+        CreateAnimationsList();
 
         DragAction();
 
-        DrawRects(lastItemPosition);
+        DrawRects();
+
+        HandleResizeEvents();
     }
 
-    private void DrawRects(Vector2 lastItemPosition)
+    private void DrawRects()
     {
-        rects.Clear();
-        const float height = 30;
-        float width = 100;
-        const float xPos = 10;
+        const float heightRect = 30;
+        float widthRect = 100;
+        const float xRectPos = 10;
 
-        const float offSetBetween = (height / 2) + 10;
+        const float offSetBetweenRects = (heightRect / 2) + 10;
 
         isRectsFoldoutOpen = EditorGUILayout.Foldout(isRectsFoldoutOpen, "Timeline");
+        float maxScrollHeight = 300f; // valor máximo de altura del scroll
+        float totalHeight = 0f; // altura total de los objetos
+        float scrollHeight = 0f;
 
         if (isRectsFoldoutOpen)
         {
+            foreach (ResizableRects obj in rects)
+            {
+                totalHeight += heightRect + (heightRect / 2);
+            }
+
+            if (animations.Count < 1)
+            {
+                totalHeight = EditorGUIUtility.singleLineHeight;
+            }
+
+            scrollHeight = Mathf.Min(totalHeight, maxScrollHeight);
+
+            rectsScrollPosition = EditorGUILayout.BeginScrollView(animationListScrollPosition, GUI.skin.box,
+                GUILayout.Height(scrollHeight));
+
+
             for (int i = 0; i < animations.Count; i++)
             {
-                Rect rect = new Rect(xPos, lastItemPosition.y + offSetBetween * i + (height / 2) * i, width, height);
-                GUI.Box(rect, "hello");
-
-                rects.Add(rect); // Agrega el rect generado a la lista
+                rects[i] = new ResizableRects(xRectPos, 7 + offSetBetweenRects * i + (heightRect / 2) * i,
+                    widthRect, heightRect);
+                Handles.DrawSolidRectangleWithOutline(rects[i].basicRect, Color.blue, Color.white);
+                Handles.DrawSolidRectangleWithOutline(rects[i].resizeRect, Color.red, Color.red);
             }
+
+            EditorGUILayout.EndScrollView();
         }
     }
 
+    private void HandleResizeEvents()
+    {
+        Event currentEvent = Event.current;
+        switch (currentEvent.type)
+        {
+            case EventType.MouseDown:
+                break;
+            case EventType.MouseUp:
+                break;
+            case EventType.MouseDrag:
+                break;
+        }
+    }
 
     private void DragAction()
     {
@@ -70,6 +113,7 @@ public class GeneralizedAnimation : EditorWindow
                 if (go.TryGetComponent(out UIAnimator animator))
                 {
                     animations.Add(animator);
+                    rects.Add(null);
                 }
             }
 
@@ -77,7 +121,7 @@ public class GeneralizedAnimation : EditorWindow
         }
     }
 
-    private float CreateAnimationsList(out Vector2 lastItemPosition)
+    private void CreateAnimationsList()
     {
         // crear el foldout
         isListFoldoutOpen = EditorGUILayout.Foldout(isListFoldoutOpen, "Animations List");
@@ -99,8 +143,8 @@ public class GeneralizedAnimation : EditorWindow
             }
 
             scrollHeight = Mathf.Min(totalHeight, maxScrollHeight);
-            scrollPosition =
-                EditorGUILayout.BeginScrollView(scrollPosition, GUI.skin.box, GUILayout.Height(scrollHeight));
+            animationListScrollPosition =
+                EditorGUILayout.BeginScrollView(animationListScrollPosition, GUI.skin.box, GUILayout.Height(scrollHeight));
 
             // Add space to the left
             GUILayout.BeginHorizontal();
@@ -131,6 +175,7 @@ public class GeneralizedAnimation : EditorWindow
             if (GUILayout.Button("+", GUILayout.Width(30), GUILayout.Height(20)))
             {
                 animations.Add(null);
+                rects.Add(null);
             }
 
             if (GUILayout.Button("-", GUILayout.Width(30), GUILayout.Height(20)))
@@ -138,14 +183,12 @@ public class GeneralizedAnimation : EditorWindow
                 if (animations.Count > 0)
                 {
                     animations.RemoveAt(animations.Count - 1);
+                    rects.RemoveAt(rects.Count - 1);
                 }
             }
 
             GUILayout.EndHorizontal();
         }
-
-        lastItemPosition = new Vector2(20, 90 + scrollHeight); // posición del último elemento
-        return scrollHeight;
     }
 
     [MenuItem("Window/Generalized Animation")]
